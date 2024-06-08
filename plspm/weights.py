@@ -61,7 +61,7 @@ class _MetricWeights:
         cor = pd.concat([self.__data, scores], axis=1).corr().loc[list(self.__data), list(scores)]
         odm = weights.apply(lambda x: x!= 0).astype(int)
         sign = lambda x : math.copysign(1.0, x)
-        w_sign = (cor * odm).applymap(sign).sum(axis=0).apply(sign)
+        w_sign = (cor * odm).map(sign).sum(axis=0).apply(sign)
         if -1 in w_sign.values:
             w_sign = w_sign.apply(lambda x : -1 if x == 0 else x)
             w_sign_matrix = pd.DataFrame(np.diag(w_sign), index=w_sign.index, columns=w_sign.index)
@@ -121,11 +121,11 @@ class _NonmetricWeights:
 
     def calculate(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         lvs = list(self.__path)
-        weights = pd.DataFrame(0, index=self.__mvs, columns=lvs)
-        data_new = pd.DataFrame(0, index=self.__index, columns=self.__mvs)
+        weights = pd.DataFrame(0.0, index=self.__mvs, columns=lvs)
+        data_new = pd.DataFrame(0.0, index=self.__index, columns=self.__mvs)
         for lv in lvs:
             mvs = self.__config.mvs(lv)
-            weights.loc[mvs, [lv]] = self.__weights[lv]
+            weights.loc[mvs, [lv]] = self.__weights[lv].reshape(self.__weights[lv].shape[0],1)
             data_new.loc[:, mvs] = self.__mv_grouped_by_lv[lv]
         weight_factors = 1 / (data_new.dot(weights).std(axis=0, skipna=True) / self.__correction)
         wf_diag = pd.DataFrame(np.diag(weight_factors), index=lvs, columns=lvs)

@@ -22,7 +22,7 @@ from plspm.weights import WeightsCalculatorFactory
 from plspm.estimator import Estimator
 
 def _create_summary(data: pd.DataFrame, original):
-    summary = pd.DataFrame(0, index=data.columns, columns=["original", "mean", "std.error", "perc.025", "perc.975", "t stat."])
+    summary = pd.DataFrame(0.0, index=data.columns, columns=["original", "mean", "std.error", "perc.025", "perc.975", "t stat."])
     summary.loc[:, "mean"] = data.mean(axis=0)
     summary.loc[:, "std.error"] = data.std(axis=0)
     summary.loc[:, "perc.025"] = data.quantile(0.025, axis=0)
@@ -43,11 +43,11 @@ class BootstrapProcess(Process):
         self.__iterations = iterations
 
     def run(self):
-        weights = pd.DataFrame(columns=self.__data.columns)
-        r_squared = pd.DataFrame(columns=self.__inner_model.r_squared().index)
-        total_effects = pd.DataFrame(columns=self.__inner_model.effects().index)
-        paths = pd.DataFrame(columns=self.__inner_model.effects().index)
-        loadings = pd.DataFrame(columns=self.__data.columns)
+        weights = pd.DataFrame(columns=self.__data.columns, dtype="float")
+        r_squared = pd.DataFrame(columns=self.__inner_model.r_squared().index, dtype="float")
+        total_effects = pd.DataFrame(columns=self.__inner_model.effects().index, dtype="float")
+        paths = pd.DataFrame(columns=self.__inner_model.effects().index, dtype="float")
+        loadings = pd.DataFrame(columns=self.__data.columns, dtype="float")
 
         observations = self.__data.shape[0]
         estimator = Estimator(self.__config)
@@ -55,13 +55,15 @@ class BootstrapProcess(Process):
             try:
                 boot_observations = np.random.randint(observations, size=observations)
                 _final_data, _scores, _weights = estimator.estimate(self.__calculator, self.__data.iloc[boot_observations, :])
-                weights = weights.append(_weights.T, ignore_index=True)
+                weights = pd.concat([weights, _weights.T], ignore_index = True)
                 inner_model = im.InnerModel(self.__config.path(), _scores)
-                r_squared = r_squared.append(inner_model.r_squared().T, ignore_index=True)
-                total_effects = total_effects.append(inner_model.effects().loc[:, "total"].T, ignore_index=True)
-                paths = paths.append(inner_model.effects().loc[:, "direct"].T, ignore_index=True)
-                loadings = loadings.append(
-                    (_scores.apply(lambda s: _final_data.corrwith(s)) * self.__config.odm(self.__config.path())).sum(axis=1), ignore_index=True)
+                r_squared = pd.concat([r_squared, inner_model.r_squared().to_frame().T], ignore_index=True)
+                total_effects = pd.concat([total_effects,
+                                           inner_model.effects().loc[:, "total"].to_frame().T], ignore_index=True)
+                paths = pd.concat([paths,
+                                   inner_model.effects().loc[:, "direct"].to_frame().T], ignore_index=True)
+                loadings = pd.concat([loadings,
+                                      (_scores.apply(lambda s: _final_data.corrwith(s)) * self.__config.odm(self.__config.path())).sum(axis=1).to_frame().T], ignore_index=True)
             except:
                 pass
         results = {}
@@ -80,11 +82,11 @@ class Bootstrap:
     """
     def __init__(self, config: c.Config, data: pd.DataFrame, inner_model: im.InnerModel, outer_model: om.OuterModel,
                  calculator: WeightsCalculatorFactory, iterations: int, num_processes: int):
-        weights = pd.DataFrame(columns=data.columns)
-        r_squared = pd.DataFrame(columns=inner_model.r_squared().index)
-        total_effects = pd.DataFrame(columns=inner_model.effects().index)
-        paths = pd.DataFrame(columns=inner_model.effects().index)
-        loadings = pd.DataFrame(columns=data.columns)
+        weights = pd.DataFrame(columns=data.columns, dtype="float")
+        r_squared = pd.DataFrame(columns=inner_model.r_squared().index, dtype="float")
+        total_effects = pd.DataFrame(columns=inner_model.effects().index, dtype="float")
+        paths = pd.DataFrame(columns=inner_model.effects().index, dtype="float")
+        loadings = pd.DataFrame(columns=data.columns, dtype="float")
 
         queue = Queue()
         processes = []
@@ -98,11 +100,11 @@ class Bootstrap:
             try:
                 while True:
                     results = queue.get(False)
-                    weights = weights.append(results["weights"])
-                    r_squared = r_squared.append(results["r_squared"])
-                    total_effects = total_effects.append(results["total_effects"])
-                    paths = paths.append(results["paths"])
-                    loadings = loadings.append(results["loadings"])
+                    weights = pd.concat([weights, results["weights"]])
+                    r_squared = pd.concat([r_squared, results["r_squared"]])
+                    total_effects = pd.concat([total_effects, results["total_effects"]])
+                    paths = pd.concat([paths, results["paths"]])
+                    loadings = pd.concat([loadings, results["loadings"]])
             except Empty:
                 pass
             time.sleep(1)
