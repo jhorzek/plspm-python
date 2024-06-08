@@ -46,10 +46,14 @@ def _effects(path: pd.DataFrame):
     for from_lv in list(path):
         for to_lv in list(path):
             if from_lv != to_lv and total_paths.loc[to_lv, from_lv] != 0:
-                effect = pd.Series({"from": from_lv, "to": to_lv, "direct": path.loc[to_lv, from_lv],
-                                    "indirect": indirect_paths.loc[to_lv, from_lv],
-                                    "total": total_paths.loc[to_lv, from_lv]}, name=from_lv + " -> " + to_lv)
-                effects = effects.append(effect)
+                effect = pd.DataFrame([{
+                        "from": from_lv,
+                        "to": to_lv,
+                        "direct": path.loc[to_lv, from_lv],
+                        "indirect": indirect_paths.loc[to_lv, from_lv],
+                        "total": total_paths.loc[to_lv, from_lv]
+                    }], index=[from_lv + " -> " + to_lv])
+                effects = pd.concat([effects, effect])
     return effects
 
 
@@ -71,7 +75,7 @@ class InnerModel:
             rsquared = regression.rsquared
             self.__r_squared.loc[dv] = rsquared
             self.__r_squared_adj.loc[dv] = 1 - (1 - rsquared) * (rows - 1) / (rows - path.loc[dv].sum() - 1)
-            self.__summaries = self.__summaries.append(_summary(dv, regression)).reset_index(drop=True)
+            self.__summaries = pd.concat([self.__summaries, _summary(dv, regression)]).reset_index(drop=True)
         self.__effects = _effects(self.__path_coefficients)
 
     def path_coefficients(self) -> pd.DataFrame:

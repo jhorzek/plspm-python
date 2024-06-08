@@ -55,13 +55,13 @@ class BootstrapProcess(Process):
             try:
                 boot_observations = np.random.randint(observations, size=observations)
                 _final_data, _scores, _weights = estimator.estimate(self.__calculator, self.__data.iloc[boot_observations, :])
-                weights = weights.append(_weights.T, ignore_index=True)
+                weights = pd.concat([weights, _weights.T], ignore_index = True)
                 inner_model = im.InnerModel(self.__config.path(), _scores)
-                r_squared = r_squared.append(inner_model.r_squared().T, ignore_index=True)
-                total_effects = total_effects.append(inner_model.effects().loc[:, "total"].T, ignore_index=True)
-                paths = paths.append(inner_model.effects().loc[:, "direct"].T, ignore_index=True)
-                loadings = loadings.append(
-                    (_scores.apply(lambda s: _final_data.corrwith(s)) * self.__config.odm(self.__config.path())).sum(axis=1), ignore_index=True)
+                r_squared = pd.concat([r_squared, inner_model.r_squared().to_frame().T], ignore_index=True)
+                total_effects = pd.concat([total_effects, inner_model.effects().loc[:, "total"].to_frame().T], ignore_index=True)
+                paths = pd.concat([paths, inner_model.effects().loc[:, "direct"].to_frame().T], ignore_index=True)
+                loadings = pd.concat([loadings,
+                                      (_scores.apply(lambda s: _final_data.corrwith(s)) * self.__config.odm(self.__config.path())).sum(axis=1).to_frame().T], ignore_index=True)
             except:
                 pass
         results = {}
@@ -98,11 +98,11 @@ class Bootstrap:
             try:
                 while True:
                     results = queue.get(False)
-                    weights = weights.append(results["weights"])
-                    r_squared = r_squared.append(results["r_squared"])
-                    total_effects = total_effects.append(results["total_effects"])
-                    paths = paths.append(results["paths"])
-                    loadings = loadings.append(results["loadings"])
+                    weights = pd.concat([weights, results["weights"]])
+                    r_squared = pd.concat([r_squared, results["r_squared"]])
+                    total_effects = pd.concat([total_effects, results["total_effects"]])
+                    paths = pd.concat([paths, results["paths"]])
+                    loadings = pd.concat([loadings, results["loadings"]])
             except Empty:
                 pass
             time.sleep(1)
