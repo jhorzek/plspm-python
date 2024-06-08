@@ -29,8 +29,13 @@ class Unidimensionality:
 
     def summary(self):
         """Internal method that performs principal component analysis to compute various reliability metrics."""
-        summary = pd.DataFrame(np.NaN, index=list(self.__config.path()),
-                               columns=["mode", "mvs", "cronbach_alpha", "dillon_goldstein_rho", "eig_1st", "eig_2nd"])
+        summary = pd.DataFrame({"mode":                 pd.Series(dtype="str"),
+                                "mvs":                  pd.Series(dtype="float"),
+                                "cronbach_alpha":       pd.Series(dtype="float"),
+                                "dillon_goldstein_rho": pd.Series(dtype="float"),
+                                "eig_1st":              pd.Series(dtype="float"),
+                                "eig_2nd":              pd.Series(dtype="float")},
+                                 index=list(self.__config.path()))
         for lv in list(self.__config.path()):
             mvs = len(self.__config.mvs(lv))
             summary.loc[lv, "mode"] = self.__config.mode(lv).name

@@ -32,7 +32,11 @@ def _summary(dv, regression):
 
 def _effects(path: pd.DataFrame):
     indirect_paths = pd.DataFrame(0, index=path.index, columns=path.columns)
-    effects = pd.DataFrame(columns=["from", "to", "direct", "indirect", "total"])
+    effects = pd.DataFrame({"from":     pd.Series(dtype="str"),
+                            "to":       pd.Series(dtype="str"),
+                            "direct":   pd.Series(dtype="float"),
+                            "indirect": pd.Series(dtype="float"),
+                            "total":    pd.Series(dtype="float")})
     num_lvs = len(list(path))
     if (num_lvs == 2):
         total_paths = path
@@ -60,10 +64,10 @@ def _effects(path: pd.DataFrame):
 class InnerModel:
     """Internal class that calculates the attributes of the inner model. Use the methods :meth:`~plspm.Plspm.inner_model`, :meth:`~plspm.Plspm.path_coefficients`, and :meth:`~plspm.Plspm.effects` defined on :class:`~.plspm.Plspm` to retrieve the inner model characteristics."""
     def __init__(self, path: pd.DataFrame, scores: pd.DataFrame):
-        self.__summaries = pd.DataFrame()
-        self.__r_squared = pd.Series(0, index=path.index, name="r_squared")
-        self.__r_squared_adj = pd.Series(0, index=path.index, name="r_squared_adj")
-        self.__path_coefficients = pd.DataFrame(0, columns=path.columns, index=path.index)
+        self.__summaries = None
+        self.__r_squared = pd.Series(0.0, index=path.index, name="r_squared")
+        self.__r_squared_adj = pd.Series(0.0, index=path.index, name="r_squared_adj")
+        self.__path_coefficients = pd.DataFrame(0.0, columns=path.columns, index=path.index)
         endogenous = path.sum(axis=1).astype(bool)
         self.__endogenous = list(endogenous[endogenous == True].index)
         rows = scores.shape[0]
